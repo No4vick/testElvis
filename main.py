@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+import datetime
+
 import db_functions as db
 
 @asynccontextmanager
@@ -17,11 +19,16 @@ app = FastAPI(lifespan=lifespan)
 class User(BaseModel):
     id: Optional[int]
     username: str
-    language: db.Language
+    language: Optional[db.Language]
 
 class AchievementBase(BaseModel):
     id: Optional[int]
     score: int
+    date_granted: Optional[datetime.datetime]
+
+class UserStats(User):
+    total_score: int
+    achievements: Optional[list[AchievementBase]]
 
 class AchievementTranslation(BaseModel):
     language: db.Language
@@ -34,18 +41,21 @@ class Achievement(AchievementBase):
 class AchievementFull(AchievementBase):
     translations: list[AchievementTranslation]
 
+class UserAchievement(BaseModel):
+    user_id: int
+    achievement_id: int
+    datetime: Optional[datetime.datetime]
+
+class UserFull(BaseModel):
+    id: int
+    username: str
+    language: db.Language
+    total_score: int
+    achievements: list[AchievementFull]
 
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
-
-
-@app.get("/user/{user_id}")
-def read_item(user_id: int):
-    with db.database:
-        user = db.User.get_by_id(user_id)
-        got_user = User(username=user.username, language=user.language)
-    return got_user
 
 
 @app.post("/user/")
@@ -62,12 +72,12 @@ def create_achievement(score: int, translations: Optional[list[AchievementTransl
 def achievement_db2type(db_achievement, db_translation, language: db.Language):
     if language and language is not db.Lang.ALL:
         if db_translation:
-            achievement = Achievement(id=db_achievement.id, score=db_achievement.score, 
+            achievement = Achievement(id=db_achievement.id, score=db_achievement.score, date_granted=db_achievement.date_granted,
                                         translation=AchievementTranslation(language=language, 
                                                                            title=db_translation.title, 
                                                                            description=db_translation.description))
         else:
-            achievement = Achievement(id=db_achievement.id, score=db_achievement.score, 
+            achievement = Achievement(id=db_achievement.id, score=db_achievement.score, date_granted=db_achievement.date_granted,
                                         translation=None)
         return achievement
     else:
@@ -103,3 +113,51 @@ def get_achievements(language: Optional[db.Language]):
 def update_achievement_translation(id: int, translation: AchievementTranslation):
     db.translate_achievement(id, translation.language, translation.title, translation.description)
     return
+
+@app.post('/achievement/grant')
+def grant_user_achievement(achievement: UserAchievement):
+    if achievement.datetime:
+        db.grant_user_achievement(achievement.user_id, achievement.achievement_id, achievement.datetime)
+    else:
+        db.grant_user_achievement(achievement.user_id, achievement.achievement_id)
+    return
+
+@app.get('/achievement/{user_id}')
+def get_user_achievements(user_id: int):
+    db_achievements = db.get_user_achievements(user_id)
+    achievements: list[Achievement] = []
+    lang = db.get_user_language(user_id)
+    for db_achievement in db_achievements:
+        db_achievement, db_translation = db.get_achievement(db_achievement, lang)
+        achievements.append(achievement_db2type(db_achievement, db_translation, lang))
+    return achievements
+
+@app.get('/statistics/max_achievements')
+def get_user_with_max_achievements() -> dict:
+    user, count = db.get_user_with_max_achievements()
+    return {'user': UserStats(id=user.id, username=user.username, total_score=user.total_score), 'count': count}
+
+@app.get('/statistics/max_score')
+def get_user_with_max_score() -> UserStats:
+    user = db.get_user_with_max_score()
+    return UserStats(id=user.id, username=user.username, total_score=user.total_score)
+
+@app.get('/statistics/max_diff')
+def get_users_with_max_diff(limit: Optional[int]) -> list[UserStats]:
+    users = db.get_users_with_max_score_diff(limit)
+    return [UserStats(id=user.id, username=user.username, total_score=user.total_score) for user in users]
+
+@app.get('/statistics/min_diff')
+def get_users_with_min_diff(limit: Optional[int]) -> list[UserStats]:
+    users = db.get_users_with_min_score_diff(limit)
+    return [UserStats(id=user.id, username=user.username, total_score=user.total_score) for user in users]
+
+@app.get('/statistics/streak')
+def get_users_with_streak(limit: Optional[int]) -> list[UserStats]:
+    users = db.get_users_with_streak(limit)
+    return [UserStats(id=user.id, username=user.username, total_score=user.total_score) for user in users]
+
+@app.get('/user/{user_id}')
+def get_user(user_id: int) -> UserFull:
+    user = db.get_user(user_id)
+    return UserFull(id=user.id, username=user.username, language=user.language, total_score=user.total_score, achievements=get_user_achievements(user_id))
