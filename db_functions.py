@@ -33,7 +33,7 @@ def drop_db():
     
 @db_transaction
 def create_user(username: str, language: Language) -> int:
-    new_user = User.create(username=username, language=language)
+    new_user = User.create(username=username, language=language.value, total_score=0)
     return new_user.id
 
 @db_transaction
@@ -63,7 +63,7 @@ def translate_achievement(id: int, language: Language, title: str, description: 
     return translation, created
 
 def get_translation(id: int, language: Language):
-    match(language):
+    match(Lang(language)):
         case Lang.EN:
             translation = AchievementEn.get_or_none(id=id)
         case Lang.RU:
@@ -114,33 +114,43 @@ def get_user_with_max_achievements() -> tuple[User, int]:
     return user, user.achievement_count
 
 @db_transaction
-def get_user_with_max_total_score() -> tuple[User, int]:
-    user = (User
-            .select(User, fn.Max(User.total_score).alias('max_score'))
-            .get())
-    return user, user.total_score
+def get_user_with_max_score() -> User:
+    user = User.select().order_by(User.total_score.desc()).get()
+    return user
 
 @db_transaction
-def get_users_with_min_score_diff(limit: int = 5) -> list:
-    users = (User
-             .select(User, fn.Max(Achievement.score) - fn.Min(Achievement.score).alias('score_diff'))
-             .join(UserAchievement)
-             .join(Achievement)
-             .group_by(User.id)
-             .order_by(fn.Max(Achievement.score) - fn.Min(Achievement.score).asc())
-             .limit(limit))
-    return users
+def get_users_with_min_score_diff() -> list:
+    users = User.select().order_by(User.total_score)
+    closest_pair = None
+    min_difference = float('inf')
+
+    for i in range(len(users) - 1):
+        user1 = users[i]
+        user2 = users[i + 1]
+        score_difference = abs(user1.total_score - user2.total_score)
+
+        if score_difference < min_difference:
+            min_difference = score_difference
+            closest_pair = (user1, user2)
+
+        if min_difference == 0:
+            break
+
+    return closest_pair
 
 @db_transaction
-def get_users_with_max_score_diff(limit: int = 5) -> list:
-    users = (User
-             .select(User, fn.Max(Achievement.score) - fn.Min(Achievement.score).alias('score_diff'))
-             .join(UserAchievement)
-             .join(Achievement)
-             .group_by(User.id)
-             .order_by(fn.Max(Achievement.score) - fn.Min(Achievement.score).desc())
-             .limit(limit))
-    return users
+def get_users_with_max_score_diff() -> tuple[User]:
+    max_score_user = (User
+                      .select()
+                      .order_by(User.total_score.desc())
+                      .limit(1)
+                      .get())
+    min_score_user = (User
+                      .select()
+                      .order_by(User.total_score.asc())
+                      .limit(1)
+                      .get())
+    return max_score_user, min_score_user
 
 @db_transaction
 def get_users_achievements(users: list[int]) -> list:
@@ -152,7 +162,7 @@ def get_users_achievements(users: list[int]) -> list:
     return users_achievements
 
 @db_transaction
-def get_users_with_7day_streak(limit: int = 100) -> list:
+def get_users_with_streak(day_streak: int = 7, limit: int = 100) -> list:
     streak_users = []
     users = User.select().limit(limit) if limit > 0 else User.select()
     for user in users:
@@ -160,15 +170,23 @@ def get_users_with_7day_streak(limit: int = 100) -> list:
         day_difference = datetime.timedelta(days=0)
         now = datetime.datetime.now()
         for ua in UserAchievement.select().where(UserAchievement.user_id == user.id).order_by(UserAchievement.date.desc()):
-            if ua.date.date() == now - day_difference:
+            print(ua.date.date())
+            if ua.date.date() == (now - day_difference).date():
                 streak += 1
                 day_difference += datetime.timedelta(days=1)
             else:
                 break
-        if streak >= 7:
+        if streak >= day_streak:
             streak_users.append(user)
     return streak_users
 
 if __name__ == "__main__":
-    drop_db()
-    create_db()
+    # drop_db()
+    # create_db()
+    # user_id = create_user('testuser', Lang.EN)
+    # now = datetime.datetime.now()
+    # for i in range(7):
+    #     import random
+    #     achievement_id = create_achievement(random.randint(1, 10))
+    #     grant_user_achievement(user_id, achievement_id, now - datetime.timedelta(days=i))
+    print(get_users_with_min_score_diff())
