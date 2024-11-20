@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app
-from db_functions import create_db, drop_db, create_user, grant_user_achievement, create_achievement, Lang
+from app.main import app
+from app.db_functions import create_db, drop_db, create_user, grant_user_achievement, create_achievement, Lang
 import datetime
 
 from peewee import PostgresqlDatabase

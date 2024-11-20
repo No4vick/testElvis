@@ -4,7 +4,7 @@ from enum import Enum
 from typing import NewType
 from peewee import fn
 
-from db import database, User, Achievement, AchievementRu, AchievementEn, UserAchievement
+from app.db import database, User, Achievement, AchievementRu, AchievementEn, UserAchievement
 
 class Lang(Enum):
     EN = 'en'

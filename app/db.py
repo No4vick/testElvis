@@ -1,7 +1,11 @@
 from peewee import PostgresqlDatabase, CharField, FixedCharField, IntegerField, ForeignKeyField, Check, AutoField, DateTimeField, fn
 from playhouse.signals import Model as SignalModel, post_save
+from os import getenv
 
-database = PostgresqlDatabase('elvis_test', user='elvis_test', password="hackme12345")
+# database = PostgresqlDatabase(getenv('DB_DATABASE'), user=getenv('DB_LOGIN'), password=getenv('DB_PASSWORD'))
+# database = PostgresqlDatabase('elvis_test', user='elvis_test', password="hackme12345")
+database = PostgresqlDatabase(getenv('DB_URL'))
+# database = PostgresqlDatabase('postgresql://elvis_test:hackme12345@127.0.0.1:5432/elvis_test')
 
 class BaseModel(SignalModel):
     """A base model that will use our Postgresql database"""

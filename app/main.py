@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 import datetime
 
-import db_functions as db
+import app.db_functions as db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
