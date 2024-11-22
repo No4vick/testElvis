@@ -179,14 +179,3 @@ def get_users_with_streak(day_streak: int = 7, limit: int = 100) -> list:
         if streak >= day_streak:
             streak_users.append(user)
     return streak_users
-
-if __name__ == "__main__":
-    # drop_db()
-    # create_db()
-    # user_id = create_user('testuser', Lang.EN)
-    # now = datetime.datetime.now()
-    # for i in range(7):
-    #     import random
-    #     achievement_id = create_achievement(random.randint(1, 10))
-    #     grant_user_achievement(user_id, achievement_id, now - datetime.timedelta(days=i))
-    print(get_users_with_min_score_diff())
