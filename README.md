@@ -1,6 +1,6 @@
 # testElvis
 Тестовое задание для ЭЛВИС, в виде API сервера
-Подробная документация API находится в папке [docs](https://github.com/github.com/No4vick/testElvis/tree/main/docs), а также на запущенном сервере по адресу `http://server_domain/docs`
+Подробная документация API находится в папке [docs](https://github.com/No4vick/testElvis/tree/main/docs), а также на запущенном сервере по адресу `http://server_domain/docs`
 
 # Запуск прокета в Docker
 Для того, чтобы запустить сервер с его компонентами требуется `docker-compose`.
